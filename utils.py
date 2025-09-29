@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 import pandas as pd
 from ultralytics import YOLO
+import os
+import sys
+
 import streamlit as st
 
 # -----------------------------
@@ -42,6 +45,16 @@ class BananaSugarModel:
 def load_models():
     """Load YOLO models with caching"""
     try:
+        # PyTorch 2.6+ defaults torch.load(weights_only=True). Allowlist Ultralytics class for safe loading.
+        try:
+            # Defer imports so this remains compatible on older torch versions
+            from torch.serialization import add_safe_globals  # type: ignore
+            from ultralytics.nn.tasks import DetectionModel  # type: ignore
+            add_safe_globals([DetectionModel])
+        except Exception:
+            # Best-effort: if add_safe_globals is unavailable, proceed as usual
+            pass
+
         banana_model = YOLO("runs/detect/train/weights/best.pt")
         coco_model = YOLO("yolov8n.pt")
         return banana_model, coco_model
