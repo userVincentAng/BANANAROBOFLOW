@@ -4,6 +4,7 @@ import pandas as pd
 from ultralytics import YOLO
 import os
 import sys
+import torch
 
 import streamlit as st
 
@@ -50,7 +51,11 @@ def load_models():
             # Defer imports so this remains compatible on older torch versions
             from torch.serialization import add_safe_globals  # type: ignore
             from ultralytics.nn.tasks import DetectionModel  # type: ignore
-            add_safe_globals([DetectionModel])
+            # Allowlist required classes that appear in serialized checkpoints
+            add_safe_globals([
+                DetectionModel,
+                torch.nn.modules.container.Sequential,
+            ])
         except Exception:
             # Best-effort: if add_safe_globals is unavailable, proceed as usual
             pass
