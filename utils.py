@@ -51,11 +51,35 @@ def load_models():
             # Defer imports so this remains compatible on older torch versions
             from torch.serialization import add_safe_globals  # type: ignore
             from ultralytics.nn.tasks import DetectionModel  # type: ignore
-            # Allowlist required classes that appear in serialized checkpoints
-            add_safe_globals([
-                DetectionModel,
-                torch.nn.modules.container.Sequential,
-            ])
+            # Collect safe globals, handling optional imports gracefully
+            safe_objs = [torch.nn.modules.container.Sequential, DetectionModel]
+            try:
+                from ultralytics.nn.modules.conv import Conv  # type: ignore
+                safe_objs.append(Conv)
+            except Exception:
+                pass
+            try:
+                from ultralytics.nn.modules.conv import DWConv  # type: ignore
+                safe_objs.append(DWConv)
+            except Exception:
+                pass
+            try:
+                from ultralytics.nn.modules.conv import C2f  # type: ignore
+                safe_objs.append(C2f)
+            except Exception:
+                pass
+            try:
+                from ultralytics.nn.modules.conv import Bottleneck  # type: ignore
+                safe_objs.append(Bottleneck)
+            except Exception:
+                pass
+            try:
+                from ultralytics.nn.modules.conv import SPPF  # type: ignore
+                safe_objs.append(SPPF)
+            except Exception:
+                pass
+
+            add_safe_globals(safe_objs)
         except Exception:
             # Best-effort: if add_safe_globals is unavailable, proceed as usual
             pass
