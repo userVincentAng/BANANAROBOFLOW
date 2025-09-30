@@ -13,8 +13,18 @@ from storage import BananaStorage
 # -----------------------------
 # Streamlit UI Configuration
 # -----------------------------
-st.set_page_config(page_title="Lakatan Ripeness & Sugar Content Detection", layout="wide")
-st.title("🍌 Lakatan Ripeness & Sugar Content Detection")
+st.set_page_config(page_title="Lakatan Banana Ripeness & Sugar Content Detection", layout="wide")
+# School Branding: PCWHS STE Program
+try:
+    logo_image = Image.open("pcwh_logo.jpg")
+    col_logo, col_text = st.columns([1, 6])
+    with col_logo:
+        st.image(logo_image, width=90)
+    with col_text:
+        st.markdown("## Pasay City West High School — STE Program")
+except Exception:
+    st.warning("School logo not found: pcwh_logo.jpg")
+st.title("🍌 Lakatan Banana Ripeness & Sugar Content Detection")
 
 # Initialize storage
 @st.cache_resource
@@ -142,7 +152,7 @@ def render_sidebar():
 # Image Upload & Display
 # -----------------------------
 def handle_image_upload():
-    uploaded_file = st.file_uploader("📤 Upload an image of bananas", type=["jpg", "jpeg", "png", "bmp"])
+    uploaded_file = st.file_uploader("📤 Upload an image of lakatan banana", type=["jpg", "jpeg", "png", "bmp"])
     image_bgr = None
     
     if uploaded_file is not None:
@@ -169,7 +179,7 @@ def display_detection_results(results, formula_type, weight_per_banana, result_b
     
     # Enhanced results display
     lines = [
-        "🔬 SCIENTIFIC BANANA ANALYSIS", 
+        "🔬 SCIENTIFIC LAKATAN BANANA ANALYSIS", 
         "=" * 50, 
         ""
     ]
