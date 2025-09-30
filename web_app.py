@@ -452,10 +452,10 @@ def render_footer():
     - Age range: 1-8 days with extrapolation to 10 days
     
     **💡 Tips for best results:**
-    - Use clear, well-lit images of bananas
+    - Use clear, well-lit images of lakatan bananas
     - Ensure bananas are visible and not overlapping too much
     - Adjust sensitivity if detection is too strict/lenient
-    - Typical banana weight is 100-150g for accurate sugar estimation
+    - Typical lakatan banana weight is 100-150g for accurate sugar estimation
     """)
 
 # -----------------------------
