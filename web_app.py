@@ -13,8 +13,8 @@ from storage import BananaStorage
 # -----------------------------
 # Streamlit UI Configuration
 # -----------------------------
-st.set_page_config(page_title="Banana Ripeness & Sugar Content Detection", layout="wide")
-st.title("🍌 Banana Ripeness & Sugar Content Detection")
+st.set_page_config(page_title="Lakatan Ripeness & Sugar Content Detection", layout="wide")
+st.title("🍌 Lakatan Ripeness & Sugar Content Detection")
 
 # Initialize storage
 @st.cache_resource
@@ -330,17 +330,17 @@ def show_storage_analytics():
     action_col1, action_col2, action_col3 = st.columns(3)
     
     with action_col1:
-        if st.button("🗑️ Clear All Storage"):
+        if st.button("🗑️ Clear All Storage", key="clear_all_storage_analytics"):
             storage.clear_storage()
             st.rerun()
     
     with action_col2:
-        if st.button("📤 Export All Data"):
+        if st.button("📤 Export All Data", key="export_all_data_analytics"):
             export_path = storage.export_data()
             st.success(f"✅ Data exported to: `{export_path}`")
     
     with action_col3:
-        if st.button("🔄 Delete Oldest"):
+        if st.button("🔄 Delete Oldest", key="delete_oldest_analytics"):
             if storage.delete_oldest_analysis():
                 st.success("Oldest analysis deleted!")
                 st.rerun()
@@ -394,12 +394,12 @@ def show_storage_analytics():
         bulk_col1, bulk_col2 = st.columns(2)
         
         with bulk_col1:
-            if st.button("🗑️ Delete All Analyses",  ):
+            if st.button("🗑️ Delete All Analyses", key="delete_all_analyses"):
                 storage.clear_storage()
                 st.rerun()
         
         with bulk_col2:
-            if st.button("📷 Clear Images Only",  ):
+            if st.button("📷 Clear Images Only", key="clear_images_only"):
                 image_files = list(storage.images_dir.glob("*.jpg"))
                 for image_file in image_files:
                     image_file.unlink()
