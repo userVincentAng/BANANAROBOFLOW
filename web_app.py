@@ -330,17 +330,17 @@ def show_storage_analytics():
     action_col1, action_col2, action_col3 = st.columns(3)
     
     with action_col1:
-        if st.button("🗑️ Clear All Storage", use_container_width=True):
+        if st.button("🗑️ Clear All Storage"):
             storage.clear_storage()
             st.rerun()
     
     with action_col2:
-        if st.button("📤 Export All Data", use_container_width=True):
+        if st.button("📤 Export All Data"):
             export_path = storage.export_data()
             st.success(f"✅ Data exported to: `{export_path}`")
     
     with action_col3:
-        if st.button("🔄 Delete Oldest", use_container_width=True):
+        if st.button("🔄 Delete Oldest"):
             if storage.delete_oldest_analysis():
                 st.success("Oldest analysis deleted!")
                 st.rerun()
@@ -383,8 +383,7 @@ def show_storage_analytics():
                 st.write(f"🆔 ID: {row['ID']}")
             
             with col4:
-                if st.button("🗑️ Delete", key=f"delete_analytics_{row['ID']}", 
-                           use_container_width=True):
+                if st.button("🗑️ Delete", key=f"delete_analytics_{row['ID']}"):
                     storage.delete_analysis_by_id(row['ID'])
                     st.rerun()
             
@@ -395,12 +394,12 @@ def show_storage_analytics():
         bulk_col1, bulk_col2 = st.columns(2)
         
         with bulk_col1:
-            if st.button("🗑️ Delete All Analyses", use_container_width=True):
+            if st.button("🗑️ Delete All Analyses",  ):
                 storage.clear_storage()
                 st.rerun()
         
         with bulk_col2:
-            if st.button("📷 Clear Images Only", use_container_width=True):
+            if st.button("📷 Clear Images Only",  ):
                 image_files = list(storage.images_dir.glob("*.jpg"))
                 for image_file in image_files:
                     image_file.unlink()
@@ -478,7 +477,7 @@ def main():
         # Handle image upload
         image_bgr, image_rgb, filename = handle_image_upload()
         if image_rgb is not None:
-            image_placeholder.image(image_rgb, caption=f"Uploaded Image: {filename}", use_container_width=True)
+            image_placeholder.image(image_rgb, caption=f"Uploaded Image: {filename}")
         
         # Detection button
         detect_clicked = st.button("🔍 Detect Ripeness & Sugar Content", type="primary")
@@ -495,7 +494,7 @@ def main():
                     )
                     
                     # Display annotated result
-                    image_placeholder.image(results['image'], caption="Detection Result", use_container_width=True)
+                    image_placeholder.image(results['image'], caption="Detection Result",  )
                     
                     if results.get('detections'):
                         # Determine formula type
