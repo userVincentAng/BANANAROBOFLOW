@@ -71,8 +71,8 @@ def get_ripeness_color(score):
     }
     return colors.get(int(round(score)), "#FFFF00")
 
-def process_banana_detection(img_bgr, model, sensitivity, show_spots, high_contrast_labels, weight_per_banana):
-    """Main detection processing function with visualization"""
+def process_banana_detection(img_bgr, model, sensitivity, show_spots, high_contrast_labels, weight_per_banana, has_peel=True):
+    """Main detection processing function with visualization - UPDATED to accept has_peel parameter"""
     results = model.predict(img_bgr, verbose=False)
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
@@ -94,15 +94,16 @@ def process_banana_detection(img_bgr, model, sensitivity, show_spots, high_contr
                 
             analysis = analyze_banana_ripeness(cropped, sensitivity)
 
-            # Calculate sugar content using scientific model
+            # Calculate sugar content using scientific model with peel option
             sugar_percentage = sugar_model.predict_sugar_percentage(analysis['age_days'])
-            individual_sugar = sugar_model.calculate_sugar_content(analysis['age_days'], weight_per_banana)
+            individual_sugar = sugar_model.calculate_sugar_content(analysis['age_days'], weight_per_banana, has_peel)
 
             ripeness_stage = analysis['ripeness_stage']
             color = get_ripeness_color(analysis['ripeness_score'])
 
-            # Enhanced label with scientific sugar information
-            label_text = f"Banana {i + 1}: {analysis['age_days']}d | Sugar: {sugar_percentage:.1f}%"
+            # Enhanced label with scientific sugar information and peel status
+            peel_status = "peeled" if not has_peel else "with peel"
+            label_text = f"Banana {i + 1}: {analysis['age_days']}d | Sugar: {sugar_percentage:.1f}% ({peel_status})"
             draw_enhanced_bounding_box(img_rgb, x1, y1, x2, y2, color, label_text, confidence,
                                        high_contrast_labels=high_contrast_labels)
 
@@ -122,7 +123,8 @@ def process_banana_detection(img_bgr, model, sensitivity, show_spots, high_contr
                 'ripeness_stage': ripeness_stage,
                 'confidence': confidence,
                 'sugar_percentage': sugar_percentage,
-                'sugar_content': individual_sugar
+                'sugar_content': individual_sugar,
+                'has_peel': has_peel
             })
 
     # Convert back to PIL Image for Streamlit

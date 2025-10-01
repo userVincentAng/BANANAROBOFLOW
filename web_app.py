@@ -16,10 +16,13 @@ from storage import BananaStorage
 st.set_page_config(page_title="Lakatan Banana Ripeness & Sugar Content Detection", layout="wide")
 # School Branding: PCWHS STE Program
 try:
-    logo_image = Image.open("pcwh_logo.jpg")
-    col_logo, col_text = st.columns([1, 6])
-    with col_logo:
-        st.image(logo_image, width=90)
+    logo_image2 = Image.open("pcwhs.png")
+    logo_image1 = Image.open("pcwh_logo.png")
+    col_logo1, col_logo2, col_text = st.columns([1, 1, 8])
+    with col_logo1:
+        st.image(logo_image2, width=100)
+    with col_logo2:
+        st.image(logo_image1, width=100)
     with col_text:
         st.markdown("## Pasay City West High School — STE Program")
 except Exception:
@@ -41,6 +44,8 @@ def initialize_session_state():
         st.session_state.weight_per_banana = 120.0
     if 'sugar_formula' not in st.session_state:
         st.session_state.sugar_formula = "Scientific: Regression Model (R²=0.87)"
+    if 'has_peel' not in st.session_state:
+        st.session_state.has_peel = True
 
 # -----------------------------
 # Sidebar Controls
@@ -62,9 +67,18 @@ def render_sidebar():
             help="Typical banana weight: 100-150g"
         )
         
+        # PEEL TOGGLE - NEW FEATURE
+        has_peel = st.checkbox(
+            "🍌 Banana has peel", 
+            value=st.session_state.has_peel,
+            help="When checked, applies 0.6338 multiplier to sugar content (63.38% of sugar is in peeled banana)"
+        )
+        
         # Update session state when value changes
         if weight_per_banana != st.session_state.weight_per_banana:
             st.session_state.weight_per_banana = weight_per_banana
+        if has_peel != st.session_state.has_peel:
+            st.session_state.has_peel = has_peel
         
         # Scientific formula selection
         sugar_formula = st.selectbox(
@@ -144,9 +158,10 @@ def render_sidebar():
             - R-squared: 0.867 (High correlation)
             - Age range: 1-8 days
             - Measurements taken at stem, middle, and tip
+            - Peel multiplier: 0.6338 (63.38% of sugar in peeled banana)
             """)
     
-    return sensitivity, show_spots, high_contrast_labels, weight_per_banana, sugar_formula
+    return sensitivity, show_spots, high_contrast_labels, weight_per_banana, sugar_formula, has_peel
 
 # -----------------------------
 # Image Upload & Display
@@ -168,10 +183,92 @@ def handle_image_upload():
     return None, None, None
 
 # -----------------------------
-# Results Display (UPDATED FUNCTION SIGNATURE)
+# Sugar Projection Display
+# -----------------------------
+def display_sugar_projection(sugar_projections, detections, weight_per_banana, has_peel):
+    """Display sugar content projection for the next 10 days"""
+    if not sugar_projections or not detections:
+        return
+    
+    with st.expander("📈 Sugar Content Projection (Next 10 Days)", expanded=True):
+        st.info("This projection shows how the sugar content will evolve over the next 10 days based on the scientific regression model.")
+        
+        # Create projection data for all bananas
+        projection_data = []
+        for i, projection in enumerate(sugar_projections):
+            banana_name = f"Banana {i+1}"
+            for day_data in projection:
+                projection_data.append({
+                    'Day': day_data['day'],
+                    'Age (days)': day_data['age_days'],
+                    'Sugar Content (g)': day_data['sugar_content'],
+                    'Sugar Percentage': day_data['sugar_percentage'],
+                    'Banana': banana_name,
+                    'Is Current': day_data['is_current']
+                })
+        
+        if projection_data:
+            # Convert to DataFrame for visualization
+            df_projection = pd.DataFrame(projection_data)
+            
+            # Display line chart
+            st.subheader("Sugar Content Projection")
+            pivot_df = df_projection.pivot_table(
+                index='Day', 
+                columns='Banana', 
+                values='Sugar Content (g)',
+                aggfunc='mean'
+            ).reset_index()
+            
+            st.line_chart(pivot_df.set_index('Day'))
+            
+            # Display detailed table
+            st.subheader("Detailed Projection Data")
+            
+            # Show current day highlighted
+            current_day_data = df_projection[df_projection['Is Current'] == True]
+            if not current_day_data.empty:
+                st.write("**Current Analysis:**")
+                current_display = current_day_data[['Banana', 'Age (days)', 'Sugar Percentage', 'Sugar Content (g)']].copy()
+                current_display['Sugar Percentage'] = current_display['Sugar Percentage'].round(1).astype(str) + '%'
+                current_display['Sugar Content (g)'] = current_display['Sugar Content (g)'].round(1)
+                st.table(current_display)
+            
+            # Show future projections
+            future_data = df_projection[df_projection['Is Current'] == False]
+            if not future_data.empty:
+                st.write("**Future Projections:**")
+                
+                # Allow user to select which banana to view
+                banana_options = [f"Banana {i+1}" for i in range(len(detections))]
+                selected_banana = st.selectbox("Select banana to view detailed projection:", banana_options)
+                
+                # Display selected banana's projection
+                banana_projection = future_data[future_data['Banana'] == selected_banana]
+                if not banana_projection.empty:
+                    display_df = banana_projection[['Day', 'Age (days)', 'Sugar Percentage', 'Sugar Content (g)']].copy()
+                    display_df['Sugar Percentage'] = display_df['Sugar Percentage'].round(1).astype(str) + '%'
+                    display_df['Sugar Content (g)'] = display_df['Sugar Content (g)'].round(1)
+                    display_df = display_df.sort_values('Day')
+                    st.table(display_df)
+                    
+                    # Show percentage increase
+                    current_sugar = current_day_data[current_day_data['Banana'] == selected_banana]['Sugar Content (g)'].iloc[0]
+                    day10_sugar = banana_projection[banana_projection['Day'] == 10]['Sugar Content (g)'].iloc[0]
+                    increase_pct = ((day10_sugar - current_sugar) / current_sugar) * 100
+                    
+                    st.metric(
+                        f"Projected Sugar Increase for {selected_banana} (10 days)",
+                        f"{day10_sugar:.1f}g",
+                        f"+{increase_pct:.1f}%"
+                    )
+
+# -----------------------------
+# Results Display
 # -----------------------------
 def display_detection_results(results, formula_type, weight_per_banana, result_box, 
-                             sugar_content, formula_explanation, total_age, banana_count, sugar_breakdown=None):
+                             sugar_content, formula_explanation, total_age, banana_count, 
+                             sugar_breakdown=None, sugar_projections=None, has_peel=True):
     """Updated function to accept all required parameters"""
     if not results.get('detections'):
         result_box.info("ℹ️ No bananas detected. Try adjusting sensitivity or use a clearer image.")
@@ -194,21 +291,25 @@ def display_detection_results(results, formula_type, weight_per_banana, result_b
     
     # Model information for scientific approach
     if formula_key == "scientific":
+        peel_status = "with peel" if has_peel else "without peel"
         lines.extend([
             "📊 REGRESSION MODEL (From Experimental Data)",
             f"• Formula: Sugar% = 25.99 + 0.707 × Age",
+            f"• Peel Status: {peel_status} (Multiplier: {0.6338 if has_peel else 1.0})",
             f"• R-squared: 0.867 (High correlation)",
             f"• Standard Error: ±0.65%",
             ""
         ])
     
     # Nutritional summary
+    peel_status = "with peel" if has_peel else "without peel"
     lines.extend([
         "📈 ANALYSIS SUMMARY",
         f"• Bananas Detected: {banana_count}",
         f"• Total Age: {total_age:.1f} days",
         f"• Average Weight per Banana: {weight_per_banana:.1f}g",
         f"• Total Weight: {weight_per_banana * banana_count:.1f}g",
+        f"• Peel Status: {peel_status}",
         f"• Estimated Total Sugar Content: {sugar_content:.1f}g",
         f"• Calculation Method: {formula_explanation}",
         ""
@@ -244,9 +345,9 @@ def display_detection_results(results, formula_type, weight_per_banana, result_b
         ])
     
     result_box.code("\n".join(lines))
-    display_visualizations(formula_key, sugar_content, sugar_breakdown, results['detections'])
+    display_visualizations(formula_key, sugar_content, sugar_breakdown, results['detections'], has_peel)
 
-def display_visualizations(formula_key, sugar_content, sugar_breakdown, detections):
+def display_visualizations(formula_key, sugar_content, sugar_breakdown, detections, has_peel):
     with st.expander("📈 Scientific Visualizations", expanded=True):
         col1, col2, col3 = st.columns(3)
         
@@ -270,6 +371,7 @@ def display_visualizations(formula_key, sugar_content, sugar_breakdown, detectio
                 st.metric("Model R-squared", "0.867")
                 st.metric("Correlation Strength", "Strong")
                 st.metric("Standard Error", "±0.65%")
+                st.metric("Peel Multiplier", "0.6338" if has_peel else "1.0")
         
         with col3:
             # Daily intake context
@@ -287,7 +389,8 @@ def display_visualizations(formula_key, sugar_content, sugar_breakdown, detectio
                     'Banana': item['banana'],
                     'Age (days)': item['age_days'],
                     'Sugar Percentage': f"{item['sugar_percentage']:.1f}%",
-                    'Sugar Content (g)': f"{item['sugar_grams']:.1f}g"
+                    'Sugar Content (g)': f"{item['sugar_grams']:.1f}g",
+                    'Has Peel': "Yes" if item.get('has_peel', True) else "No"
                 })
             st.table(breakdown_data)
     
@@ -448,6 +551,7 @@ def render_footer():
     **🔬 Scientific Basis:**
     - Sugar prediction based on experimental data with R²=0.867
     - Regression formula: Sugar% = 25.99 + 0.707 × Age
+    - Peel multiplier: 0.6338 (63.38% of sugar in peeled banana)
     - Measurements validated across banana stem, middle, and tip
     - Age range: 1-8 days with extrapolation to 10 days
     
@@ -456,6 +560,7 @@ def render_footer():
     - Ensure bananas are visible and not overlapping too much
     - Adjust sensitivity if detection is too strict/lenient
     - Typical lakatan banana weight is 100-150g for accurate sugar estimation
+    - Use peel toggle to match whether bananas are peeled or unpeeled
     """)
 
 # -----------------------------
@@ -468,7 +573,7 @@ def main():
     banana_model, coco_model = load_models()
     
     # Render sidebar
-    sensitivity, show_spots, high_contrast_labels, weight_per_banana, sugar_formula = render_sidebar()
+    sensitivity, show_spots, high_contrast_labels, weight_per_banana, sugar_formula, has_peel = render_sidebar()
     
     # Add storage analytics tab
     tab1, tab2 = st.tabs(["🔍 Banana Analysis", "📊 Storage Analytics"])
@@ -500,11 +605,11 @@ def main():
                 with st.spinner("🔬 Analyzing bananas with scientific model..."):
                     # Process banana detection
                     results = process_banana_detection(
-                        image_bgr, banana_model, sensitivity, show_spots, high_contrast_labels, weight_per_banana
+                        image_bgr, banana_model, sensitivity, show_spots, high_contrast_labels, weight_per_banana, has_peel
                     )
                     
                     # Display annotated result
-                    image_placeholder.image(results['image'], caption="Detection Result",  )
+                    image_placeholder.image(results['image'], caption="Detection Result")
                     
                     if results.get('detections'):
                         # Determine formula type
@@ -517,14 +622,15 @@ def main():
                         
                         # Calculate sugar content
                         if formula_key == "scientific":
-                            sugar_content, formula_explanation, total_age, banana_count, sugar_breakdown = calculate_sugar_content(
-                                results['detections'], weight_per_banana, formula_key
+                            sugar_content, formula_explanation, total_age, banana_count, sugar_breakdown, sugar_projections = calculate_sugar_content(
+                                results['detections'], weight_per_banana, formula_key, has_peel
                             )
                         else:
                             sugar_content, formula_explanation, total_age, banana_count = calculate_sugar_content(
-                                results['detections'], weight_per_banana, formula_key
+                                results['detections'], weight_per_banana, formula_key, has_peel
                             )
                             sugar_breakdown = None
+                            sugar_projections = None
                         
                         # Save to storage
                         try:
@@ -555,8 +661,13 @@ def main():
                         # Display results with all required parameters
                         display_detection_results(
                             results, sugar_formula, weight_per_banana, result_box,
-                            sugar_content, formula_explanation, total_age, banana_count, sugar_breakdown
+                            sugar_content, formula_explanation, total_age, banana_count, 
+                            sugar_breakdown, sugar_projections, has_peel
                         )
+                        
+                        # Display sugar projection if scientific model is used
+                        if formula_key == "scientific" and sugar_projections:
+                            display_sugar_projection(sugar_projections, results['detections'], weight_per_banana, has_peel)
                     else:
                         result_box.info("ℹ️ No bananas detected. Try adjusting sensitivity or use a clearer image.")
     

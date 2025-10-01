@@ -11,6 +11,9 @@ import streamlit as st
 # -----------------------------
 # Scientific Sugar Model
 # -----------------------------
+# -----------------------------
+# Scientific Sugar Model
+# -----------------------------
 class BananaSugarModel:
     def __init__(self):
         # Based on dataset regression: Sugar = 25.99 + 0.707 * Age
@@ -18,17 +21,42 @@ class BananaSugarModel:
         self.slope = 0.707142857142857
         self.r_squared = 0.8672  # High correlation!
         self.standard_error = 0.6548
+        self.peel_multiplier = 0.6338  # Multiplier when peel is on
         
     def predict_sugar_percentage(self, age_days):
         """Predict sugar percentage (g/100ml) based on age using the regression model"""
         validated_age = self.validate_banana_age(age_days)
         return self.intercept + self.slope * validated_age
     
-    def calculate_sugar_content(self, age_days, weight_grams):
+    def calculate_sugar_content(self, age_days, weight_grams, has_peel=True):
         """Calculate total sugar content in grams based on age and weight"""
         sugar_percentage = self.predict_sugar_percentage(age_days)
         # Convert percentage to grams: (sugar_percentage/100) * weight_grams
-        return (sugar_percentage / 100) * weight_grams
+        sugar_content = (sugar_percentage / 100) * weight_grams
+        
+        # Apply peel multiplier if peel is on
+        if has_peel:
+            sugar_content *= self.peel_multiplier
+            
+        return sugar_content
+    
+    def predict_sugar_projection(self, current_age_days, weight_grams, has_peel=True, days_ahead=10):
+        """Predict sugar content for the next N days"""
+        projection = []
+        for days in range(days_ahead + 1):
+            future_age = current_age_days + days
+            sugar_percentage = self.predict_sugar_percentage(future_age)
+            sugar_content = self.calculate_sugar_content(future_age, weight_grams, has_peel)
+            
+            projection.append({
+                'day': days,
+                'age_days': future_age,
+                'sugar_percentage': sugar_percentage,
+                'sugar_content': sugar_content,
+                'is_current': days == 0
+            })
+        
+        return projection
     
     def validate_banana_age(self, age_days):
         """Validate age against dataset range with interpolation for extremes"""
@@ -143,13 +171,13 @@ def calculate_ripeness_score_improved(yellow_pct, green_pct, brown_pct, spot_pct
     score = max(1.0, min(5.0, score))
     return round(score, 1)
 
-def calculate_sugar_content(detections, total_weight, formula_type="scientific"):
+def calculate_sugar_content(detections, total_weight, formula_type="scientific", has_peel=True):
     """
     Calculate sugar content using scientific regression model or fallback methods
     """
     if not detections:
         if formula_type == "scientific":
-            return 0.0, "No bananas detected", 0.0, 0, []
+            return 0.0, "No bananas detected", 0.0, 0, [], []
         else:
             return 0.0, "No bananas detected", 0.0, 0
     
@@ -159,37 +187,48 @@ def calculate_sugar_content(detections, total_weight, formula_type="scientific")
         sugar_model = BananaSugarModel()
         total_sugar = 0.0
         sugar_breakdown = []
+        sugar_projections = []
         
         for i, det in enumerate(detections):
             age_days = det['analysis']['age_days']
             sugar_percentage = sugar_model.predict_sugar_percentage(age_days)
-            individual_sugar = sugar_model.calculate_sugar_content(age_days, total_weight)
+            individual_sugar = sugar_model.calculate_sugar_content(age_days, total_weight, has_peel)
             total_sugar += individual_sugar
+            
+            # Generate sugar projection for this banana
+            projection = sugar_model.predict_sugar_projection(age_days, total_weight, has_peel)
+            sugar_projections.append(projection)
             
             sugar_breakdown.append({
                 'banana': i + 1,
                 'age_days': age_days,
                 'sugar_percentage': sugar_percentage,
-                'sugar_grams': individual_sugar
+                'sugar_grams': individual_sugar,
+                'has_peel': has_peel
             })
         
-        formula_explanation = f"Sugar% = 25.99 + 0.707 × Age (R²=0.867)"
+        peel_info = "with peel" if has_peel else "without peel"
+        formula_explanation = f"Sugar% = 25.99 + 0.707 × Age ({peel_info})"
         total_age = sum([det['analysis']['age_days'] for det in detections])
         
-        return total_sugar, formula_explanation, total_age, banana_count, sugar_breakdown
+        return total_sugar, formula_explanation, total_age, banana_count, sugar_breakdown, sugar_projections
         
     else:
         total_age = sum([det['analysis']['age_days'] for det in detections])
         total_weight_grams = total_weight * banana_count
         
+        # Apply peel multiplier for non-scientific formulas too
+        peel_multiplier = 0.6338 if has_peel else 1.0
+        peel_info = "with peel" if has_peel else "without peel"
+        
         if formula_type == "basic":
-            sugar_content = (total_age * total_weight_grams) / 100
-            formula_explanation = f"({total_age} days × {total_weight_grams}g) / 100 = {sugar_content:.1f}g"
+            sugar_content = (total_age * total_weight_grams * peel_multiplier) / 100
+            formula_explanation = f"({total_age} days × {total_weight_grams}g × {peel_multiplier:.4f}) / 100 = {sugar_content:.1f}g ({peel_info})"
         else:
             avg_ripeness = np.mean([det['analysis']['ripeness_score'] for det in detections])
             ripeness_factor = 0.5 + (avg_ripeness / 10)
-            sugar_content = (total_age * total_weight_grams * ripeness_factor) / 100
-            formula_explanation = f"({total_age} days × {total_weight_grams}g × {ripeness_factor:.2f}) / 100 = {sugar_content:.1f}g"
+            sugar_content = (total_age * total_weight_grams * ripeness_factor * peel_multiplier) / 100
+            formula_explanation = f"({total_age} days × {total_weight_grams}g × {ripeness_factor:.2f} × {peel_multiplier:.4f}) / 100 = {sugar_content:.1f}g ({peel_info})"
         
         return sugar_content, formula_explanation, total_age, banana_count
 
