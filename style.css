@@ -1,0 +1,147 @@
+/* styles.css */
+/* Responsive logo container */
+.logo-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.logo-item {
+    flex-shrink: 0;
+}
+
+/* Responsive logo sizes */
+@media (max-width: 768px) {
+    .logo-item img {
+        width: 60px !important;
+        height: 60px !important;
+    }
+    .school-title {
+        font-size: 1.2rem !important;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .logo-item img {
+        width: 80px !important;
+        height: 80px !important;
+    }
+    .school-title {
+        font-size: 1.4rem !important;
+    }
+}
+
+@media (min-width: 1025px) {
+    .logo-item img {
+        width: 100px !important;
+        height: 100px !important;
+    }
+    .school-title {
+        font-size: 1.6rem !important;
+    }
+}
+
+/* Drawer sidebar styles */
+.sidebar-collapsed-control {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 999999;
+    background: #f0f2f6;
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.sidebar-collapsed-control:hover {
+    background: #e6e6e6;
+    transform: scale(1.05);
+}
+
+.sidebar-collapsed-control svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* Main content adjustment when sidebar is toggled */
+.main-content {
+    transition: margin-left 0.3s ease;
+}
+
+.sidebar-open .main-content {
+    margin-left: 0;
+}
+
+/* Custom sidebar styling */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+[data-testid="stSidebar"] .sidebar-content {
+    padding: 2rem 1rem;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .sidebar-collapsed-control {
+        top: 10px;
+        left: 10px;
+        width: 40px;
+        height: 40px;
+    }
+    
+    .sidebar-collapsed-control svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* Custom button styles */
+.stButton button {
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.stButton button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Custom metric cards */
+[data-testid="metric-container"] {
+    border: 1px solid #e6e6e6;
+    border-radius: 10px;
+    padding: 15px;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Tab styling */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 2px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: 50px;
+    white-space: pre-wrap;
+    background-color: #f8f9fa;
+    border-radius: 8px 8px 0px 0px;
+    gap: 1px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: #4CAF50 !important;
+    color: white !important;
+}

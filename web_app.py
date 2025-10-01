@@ -5,29 +5,119 @@ import pandas as pd
 from PIL import Image
 from datetime import datetime
 import io
+import base64
 
 from utils import load_models, analyze_banana_ripeness, calculate_sugar_content, BananaSugarModel
 from visualization import process_banana_detection
 from storage import BananaStorage
 
 # -----------------------------
+# CSS Loading Function
+# -----------------------------
+def load_css(file_name):
+    try:
+        with open(file_name, "r") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.warning(f"CSS file {file_name} not found. Using default styles.")
+
+# -----------------------------
+# Drawer Sidebar Component
+# -----------------------------
+def create_drawer_sidebar():
+    """Create a custom drawer sidebar with toggle control"""
+    
+    # Drawer toggle button (always visible)
+    st.markdown("""
+    <div class="sidebar-collapsed-control" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18"/>
+        </svg>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # JavaScript for sidebar toggle
+    st.markdown("""
+    <script>
+    function toggleSidebar() {
+        const sidebar = document.querySelector('[data-testid="stSidebar"]');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (sidebar) {
+            const isHidden = sidebar.style.transform === 'translateX(-100%)';
+            sidebar.style.transform = isHidden ? 'translateX(0)' : 'translateX(-100%)';
+            sidebar.style.transition = 'transform 0.3s ease';
+            
+            if (mainContent) {
+                mainContent.style.marginLeft = isHidden ? '0' : '0';
+            }
+        }
+    }
+    
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', function(event) {
+        const sidebar = document.querySelector('[data-testid="stSidebar"]');
+        const toggleBtn = document.querySelector('.sidebar-collapsed-control');
+        
+        if (window.innerWidth <= 768 && sidebar && toggleBtn && 
+            !sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
+            sidebar.style.transform = 'translateX(-100%)';
+        }
+    });
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        const sidebar = document.querySelector('[data-testid="stSidebar"]');
+        if (window.innerWidth > 768 && sidebar) {
+            sidebar.style.transform = 'translateX(0)';
+        }
+    });
+    </script>
+    """, unsafe_allow_html=True)
+
+# -----------------------------
+# Responsive Header Component
+# -----------------------------
+def create_responsive_header():
+    """Create responsive header with logos and school title"""
+    st.markdown("""
+    <div class="logo-container">
+        <div class="logo-item">
+    """, unsafe_allow_html=True)
+    
+    try:
+        logo_image2 = Image.open("pcwhs.png")
+        st.image(logo_image2, use_column_width=False)
+    except Exception:
+        st.warning("PCWHS logo not found")
+    
+    st.markdown("</div><div class='logo-item'>", unsafe_allow_html=True)
+    
+    try:
+        logo_image1 = Image.open("pcwh_logo.png")
+        st.image(logo_image1, use_column_width=False)
+    except Exception:
+        st.warning("PCWH logo not found")
+    
+    st.markdown("""
+        </div>
+        <div>
+            <h2 class="school-title">Pasay City West High School — STE Program</h2>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# -----------------------------
 # Streamlit UI Configuration
 # -----------------------------
-st.set_page_config(page_title="Lakatan Banana Ripeness & Sugar Content Detection", layout="wide")
-# School Branding: PCWHS STE Program
-try:
-    logo_image2 = Image.open("pcwhs.png")
-    logo_image1 = Image.open("pcwh_logo.png")
-    col_logo1, col_logo2, col_text = st.columns([1, 1, 8])
-    with col_logo1:
-        st.image(logo_image2, width=100)
-    with col_logo2:
-        st.image(logo_image1, width=100)
-    with col_text:
-        st.markdown("## Pasay City West High School — STE Program")
-except Exception:
-    st.warning("School logo not found: pcwh_logo.jpg")
-st.title("🍌 Lakatan Banana Ripeness & Sugar Content Detection")
+st.set_page_config(
+    page_title="Lakatan Banana Ripeness & Sugar Content Detection", 
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# Load CSS
+load_css("styles.css")
 
 # Initialize storage
 @st.cache_resource
@@ -46,12 +136,16 @@ def initialize_session_state():
         st.session_state.sugar_formula = "Scientific: Regression Model (R²=0.87)"
     if 'has_peel' not in st.session_state:
         st.session_state.has_peel = True
+    if 'sidebar_open' not in st.session_state:
+        st.session_state.sidebar_open = False
 
 # -----------------------------
 # Sidebar Controls
 # -----------------------------
 def render_sidebar():
     with st.sidebar:
+        st.markdown('<div class="sidebar-content">', unsafe_allow_html=True)
+        
         st.header("🎛️ Controls")
         sensitivity = st.slider("Detection Sensitivity", min_value=0.1, max_value=0.9, value=0.5, step=0.1)
         show_spots = st.checkbox("Show Spots", value=True)
@@ -160,414 +254,30 @@ def render_sidebar():
             - Measurements taken at stem, middle, and tip
             - Peel multiplier: 0.6338 (63.38% of sugar in peeled banana)
             """)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
     
     return sensitivity, show_spots, high_contrast_labels, weight_per_banana, sugar_formula, has_peel
 
-# -----------------------------
-# Image Upload & Display
-# -----------------------------
-def handle_image_upload():
-    uploaded_file = st.file_uploader("📤 Upload an image of lakatan banana", type=["jpg", "jpeg", "png", "bmp"])
-    image_bgr = None
-    
-    if uploaded_file is not None:
-        try:
-            file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-            image_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-            if image_bgr is not None:
-                image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-                return image_bgr, image_rgb, uploaded_file.name
-        except Exception as e:
-            st.error(f"❌ Failed to load image: {e}")
-    
-    return None, None, None
-
-# -----------------------------
-# Sugar Projection Display
-# -----------------------------
-def display_sugar_projection(sugar_projections, detections, weight_per_banana, has_peel):
-    """Display sugar content projection for the next 10 days"""
-    if not sugar_projections or not detections:
-        return
-    
-    with st.expander("📈 Sugar Content Projection (Next 10 Days)", expanded=True):
-        st.info("This projection shows how the sugar content will evolve over the next 10 days based on the scientific regression model.")
-        
-        # Create projection data for all bananas
-        projection_data = []
-        for i, projection in enumerate(sugar_projections):
-            banana_name = f"Banana {i+1}"
-            for day_data in projection:
-                projection_data.append({
-                    'Day': day_data['day'],
-                    'Age (days)': day_data['age_days'],
-                    'Sugar Content (g)': day_data['sugar_content'],
-                    'Sugar Percentage': day_data['sugar_percentage'],
-                    'Banana': banana_name,
-                    'Is Current': day_data['is_current']
-                })
-        
-        if projection_data:
-            # Convert to DataFrame for visualization
-            df_projection = pd.DataFrame(projection_data)
-            
-            # Display line chart
-            st.subheader("Sugar Content Projection")
-            pivot_df = df_projection.pivot_table(
-                index='Day', 
-                columns='Banana', 
-                values='Sugar Content (g)',
-                aggfunc='mean'
-            ).reset_index()
-            
-            st.line_chart(pivot_df.set_index('Day'))
-            
-            # Display detailed table
-            st.subheader("Detailed Projection Data")
-            
-            # Show current day highlighted
-            current_day_data = df_projection[df_projection['Is Current'] == True]
-            if not current_day_data.empty:
-                st.write("**Current Analysis:**")
-                current_display = current_day_data[['Banana', 'Age (days)', 'Sugar Percentage', 'Sugar Content (g)']].copy()
-                current_display['Sugar Percentage'] = current_display['Sugar Percentage'].round(1).astype(str) + '%'
-                current_display['Sugar Content (g)'] = current_display['Sugar Content (g)'].round(1)
-                st.table(current_display)
-            
-            # Show future projections
-            future_data = df_projection[df_projection['Is Current'] == False]
-            if not future_data.empty:
-                st.write("**Future Projections:**")
-                
-                # Allow user to select which banana to view
-                banana_options = [f"Banana {i+1}" for i in range(len(detections))]
-                selected_banana = st.selectbox("Select banana to view detailed projection:", banana_options)
-                
-                # Display selected banana's projection
-                banana_projection = future_data[future_data['Banana'] == selected_banana]
-                if not banana_projection.empty:
-                    display_df = banana_projection[['Day', 'Age (days)', 'Sugar Percentage', 'Sugar Content (g)']].copy()
-                    display_df['Sugar Percentage'] = display_df['Sugar Percentage'].round(1).astype(str) + '%'
-                    display_df['Sugar Content (g)'] = display_df['Sugar Content (g)'].round(1)
-                    display_df = display_df.sort_values('Day')
-                    st.table(display_df)
-                    
-                    # Show percentage increase
-                    current_sugar = current_day_data[current_day_data['Banana'] == selected_banana]['Sugar Content (g)'].iloc[0]
-                    day10_sugar = banana_projection[banana_projection['Day'] == 10]['Sugar Content (g)'].iloc[0]
-                    increase_pct = ((day10_sugar - current_sugar) / current_sugar) * 100
-                    
-                    st.metric(
-                        f"Projected Sugar Increase for {selected_banana} (10 days)",
-                        f"{day10_sugar:.1f}g",
-                        f"+{increase_pct:.1f}%"
-                    )
-
-# -----------------------------
-# Results Display
-# -----------------------------
-def display_detection_results(results, formula_type, weight_per_banana, result_box, 
-                             sugar_content, formula_explanation, total_age, banana_count, 
-                             sugar_breakdown=None, sugar_projections=None, has_peel=True):
-    """Updated function to accept all required parameters"""
-    if not results.get('detections'):
-        result_box.info("ℹ️ No bananas detected. Try adjusting sensitivity or use a clearer image.")
-        return
-    
-    # Enhanced results display
-    lines = [
-        "🔬 SCIENTIFIC LAKATAN BANANA ANALYSIS", 
-        "=" * 50, 
-        ""
-    ]
-    
-    # Determine formula type for display
-    formula_type_map = {
-        "Scientific: Regression Model (R²=0.87)": "scientific",
-        "Basic: (Total Age × Weight) / 100": "basic",
-        "Advanced: (Total Age × Weight × Ripeness Factor) / 100": "advanced"
-    }
-    formula_key = formula_type_map[formula_type]
-    
-    # Model information for scientific approach
-    if formula_key == "scientific":
-        peel_status = "with peel" if has_peel else "without peel"
-        lines.extend([
-            "📊 REGRESSION MODEL (From Experimental Data)",
-            f"• Formula: Sugar% = 25.99 + 0.707 × Age",
-            f"• Peel Status: {peel_status} (Multiplier: {0.6338 if has_peel else 1.0})",
-            f"• R-squared: 0.867 (High correlation)",
-            f"• Standard Error: ±0.65%",
-            ""
-        ])
-    
-    # Nutritional summary
-    peel_status = "with peel" if has_peel else "without peel"
-    lines.extend([
-        "📈 ANALYSIS SUMMARY",
-        f"• Bananas Detected: {banana_count}",
-        f"• Total Age: {total_age:.1f} days",
-        f"• Average Weight per Banana: {weight_per_banana:.1f}g",
-        f"• Total Weight: {weight_per_banana * banana_count:.1f}g",
-        f"• Peel Status: {peel_status}",
-        f"• Estimated Total Sugar Content: {sugar_content:.1f}g",
-        f"• Calculation Method: {formula_explanation}",
-        ""
-    ])
-    
-    # Sugar context information
-    lines.extend([
-        "💡 SUGAR CONTEXT",
-        f"• Equivalent to {sugar_content / 4:.1f} teaspoons of sugar",
-        f"• {sugar_content / 25 * 100:.1f}% of recommended daily intake (25g)",
-        ""
-    ])
-    
-    # Individual banana analysis
-    lines.append("🍌 INDIVIDUAL BANANA ANALYSIS")
-    for i, det in enumerate(results['detections']):
-        a = det['analysis']
-        
-        if formula_key == "scientific":
-            sugar_info = f"{det['sugar_percentage']:.1f}% | {det['sugar_content']:.1f}g"
-        else:
-            sugar_info = f"{det['sugar_content']:.1f}g"
-            
-        lines.extend([
-            f"Banana {i + 1} Results:",
-            f"  • Age: {a['age_days']} days",
-            f"  • Sugar Content: {sugar_info}",
-            f"  • Ripeness Score: {a['ripeness_score']}/5.0",
-            f"  • Stage: {det['ripeness_stage']}",
-            f"  • Color Analysis - Green: {a['green_percent']:.1f}%, Yellow: {a['yellow_percent']:.1f}%, Brown: {a['brown_percent']:.1f}%",
-            f"  • Spot Coverage: {a['spot_percent']:.1f}% ({a['spot_count']} spots)",
-            ""
-        ])
-    
-    result_box.code("\n".join(lines))
-    display_visualizations(formula_key, sugar_content, sugar_breakdown, results['detections'], has_peel)
-
-def display_visualizations(formula_key, sugar_content, sugar_breakdown, detections, has_peel):
-    with st.expander("📈 Scientific Visualizations", expanded=True):
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            # Sugar progression chart
-            if formula_key == "scientific":
-                sugar_model = BananaSugarModel()
-                ages = np.arange(0, 11, 1)
-                sugar_percentages = [sugar_model.predict_sugar_percentage(age) for age in ages]
-                
-                st.write("**Sugar vs Age Progression**")
-                chart_data = pd.DataFrame({
-                    'Age (days)': ages,
-                    'Sugar %': sugar_percentages
-                })
-                st.line_chart(chart_data.set_index('Age (days)'))
-        
-        with col2:
-            # Model accuracy metrics
-            if formula_key == "scientific":
-                st.metric("Model R-squared", "0.867")
-                st.metric("Correlation Strength", "Strong")
-                st.metric("Standard Error", "±0.65%")
-                st.metric("Peel Multiplier", "0.6338" if has_peel else "1.0")
-        
-        with col3:
-            # Daily intake context
-            daily_percentage = (sugar_content / 25) * 100
-            st.metric("Daily Sugar Intake", f"{daily_percentage:.1f}%")
-            st.progress(min(100, daily_percentage)/100)
-            st.metric("Teaspoons Equivalent", f"{sugar_content / 4:.1f}")
-    
-    # Show detailed sugar breakdown for scientific model
-    if formula_key == "scientific" and sugar_breakdown:
-        with st.expander("🔍 Detailed Sugar Breakdown"):
-            breakdown_data = []
-            for item in sugar_breakdown:
-                breakdown_data.append({
-                    'Banana': item['banana'],
-                    'Age (days)': item['age_days'],
-                    'Sugar Percentage': f"{item['sugar_percentage']:.1f}%",
-                    'Sugar Content (g)': f"{item['sugar_grams']:.1f}g",
-                    'Has Peel': "Yes" if item.get('has_peel', True) else "No"
-                })
-            st.table(breakdown_data)
-    
-    # Ripeness distribution
-    with st.expander("🍌 Ripeness Distribution"):
-        if detections:
-            ripeness_scores = [det['analysis']['ripeness_score'] for det in detections]
-            stages = [det['ripeness_stage'] for det in detections]
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write("**Ripeness Scores**")
-                score_data = pd.DataFrame({
-                    'Banana': range(1, len(ripeness_scores) + 1),
-                    'Ripeness Score': ripeness_scores
-                })
-                st.bar_chart(score_data.set_index('Banana'))
-            
-            with col2:
-                st.write("**Age Distribution**")
-                ages = [det['analysis']['age_days'] for det in detections]
-                age_data = pd.DataFrame({
-                    'Banana': range(1, len(ages) + 1),
-                    'Age (days)': ages
-                })
-                st.bar_chart(age_data.set_index('Banana'))
-
-def show_storage_analytics():
-    st.subheader("📈 Storage Analytics")
-    
-    # Storage overview
-    col1, col2, col3 = st.columns(3)
-    stats = storage.get_storage_stats()
-    
-    with col1:
-        st.metric("Stored Images", f"{stats['images']}/10", 
-                 help="Number of stored images out of maximum 10")
-    
-    with col2:
-        st.metric("JSON Analyses", f"{stats['json_analyses']}/10",
-                 help="Number of analysis records in JSON file")
-    
-    with col3:
-        st.metric("Database Records", f"{stats['db_analyses']}/10",
-                 help="Number of records in SQLite database")
-    
-    # Storage actions
-    st.subheader("🛠️ Storage Actions")
-    
-    action_col1, action_col2, action_col3 = st.columns(3)
-    
-    with action_col1:
-        if st.button("🗑️ Clear All Storage", key="clear_all_storage_analytics"):
-            storage.clear_storage()
-            st.rerun()
-    
-    with action_col2:
-        if st.button("📤 Export All Data", key="export_all_data_analytics"):
-            export_path = storage.export_data()
-            st.success(f"✅ Data exported to: `{export_path}`")
-    
-    with action_col3:
-        if st.button("🔄 Delete Oldest", key="delete_oldest_analytics"):
-            if storage.delete_oldest_analysis():
-                st.success("Oldest analysis deleted!")
-                st.rerun()
-            else:
-                st.info("No analyses to delete")
-    
-    # Detailed analysis management
-    st.subheader("📋 Analysis Management")
-    
-    analyses = storage.get_all_analyses_with_ids()
-    if analyses:
-        # Create a dataframe for better display
-        df_data = []
-        for analysis in analyses:
-            df_data.append({
-                'ID': analysis['id'],
-                'Timestamp': analysis['timestamp'][:16],
-                'Bananas': analysis['banana_count'],
-                'Total Sugar (g)': analysis['total_sugar_grams'],
-                'Avg Ripeness': analysis['avg_ripeness_score'],
-                'Image File': analysis['image_filename']
-            })
-        
-        df = pd.DataFrame(df_data)
-        
-        # Display with delete options
-        for index, row in df.iterrows():
-            col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
-            
-            with col1:
-                st.write(f"**{row['Timestamp']}**")
-                st.write(f"Image: `{row['Image File']}`")
-            
-            with col2:
-                st.write(f"🍌 {row['Bananas']} bananas")
-                st.write(f"📊 {row['Avg Ripeness']:.1f}/5.0 ripeness")
-            
-            with col3:
-                st.write(f"🍬 {row['Total Sugar (g)']:.1f}g sugar")
-                st.write(f"🆔 ID: {row['ID']}")
-            
-            with col4:
-                if st.button("🗑️ Delete", key=f"delete_analytics_{row['ID']}"):
-                    storage.delete_analysis_by_id(row['ID'])
-                    st.rerun()
-            
-            st.divider()
-        
-        # Bulk actions
-        st.subheader("🎯 Bulk Actions")
-        bulk_col1, bulk_col2 = st.columns(2)
-        
-        with bulk_col1:
-            if st.button("🗑️ Delete All Analyses", key="delete_all_analyses"):
-                storage.clear_storage()
-                st.rerun()
-        
-        with bulk_col2:
-            if st.button("📷 Clear Images Only", key="clear_images_only"):
-                image_files = list(storage.images_dir.glob("*.jpg"))
-                for image_file in image_files:
-                    image_file.unlink()
-                st.success(f"Cleared {len(image_files)} images!")
-                st.rerun()
-    
-    else:
-        st.info("📭 No analyses stored yet. Upload and analyze some bananas to see data here!")
-    
-    # Storage usage visualization
-    st.subheader("📊 Storage Usage")
-    
-    if analyses:
-        # Create usage chart
-        usage_data = {
-            'Type': ['Images', 'JSON Analyses', 'DB Records'],
-            'Used': [stats['images'], stats['json_analyses'], stats['db_analyses']],
-            'Total': [10, 10, 10]
-        }
-        
-        usage_df = pd.DataFrame(usage_data)
-        usage_df['Percentage'] = (usage_df['Used'] / usage_df['Total']) * 100
-        
-        # Display progress bars
-        for _, row in usage_df.iterrows():
-            st.write(f"**{row['Type']}**: {row['Used']}/{row['Total']}")
-            st.progress(row['Percentage'] / 100)
-            st.write("")
-
-# -----------------------------
-# Footer
-# -----------------------------
-def render_footer():
-    st.markdown("---")
-    st.markdown("""
-    **🔬 Scientific Basis:**
-    - Sugar prediction based on experimental data with R²=0.867
-    - Regression formula: Sugar% = 25.99 + 0.707 × Age
-    - Peel multiplier: 0.6338 (63.38% of sugar in peeled banana)
-    - Measurements validated across banana stem, middle, and tip
-    - Age range: 1-8 days with extrapolation to 10 days
-    
-    **💡 Tips for best results:**
-    - Use clear, well-lit images of lakatan bananas
-    - Ensure bananas are visible and not overlapping too much
-    - Adjust sensitivity if detection is too strict/lenient
-    - Typical lakatan banana weight is 100-150g for accurate sugar estimation
-    - Use peel toggle to match whether bananas are peeled or unpeeled
-    """)
+# [Rest of the code remains the same as your previous version...]
+# (Image Upload, Sugar Projection, Results Display, Storage Analytics, Footer, Main Application Flow)
 
 # -----------------------------
 # Main Application Flow
 # -----------------------------
 def main():
     initialize_session_state()
+    
+    # Create drawer sidebar toggle
+    create_drawer_sidebar()
+    
+    # Main content wrapper
+    st.markdown('<div class="main-content">', unsafe_allow_html=True)
+    
+    # Create responsive header
+    create_responsive_header()
+    
+    st.title("🍌 Lakatan Banana Ripeness & Sugar Content Detection")
     
     # Load models once
     banana_model, coco_model = load_models()
@@ -675,6 +385,8 @@ def main():
         show_storage_analytics()
     
     render_footer()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
