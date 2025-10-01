@@ -20,9 +20,9 @@ try:
     logo_image1 = Image.open("pcwh_logo.png")
     col_logo1, col_logo2, col_text = st.columns([1, 1, 8])
     with col_logo1:
-        st.image(logo_image2, width=100)
+        st.image(logo_image2, width=60)
     with col_logo2:
-        st.image(logo_image1, width=100)
+        st.image(logo_image1, width=60)
     with col_text:
         st.markdown("## Pasay City West High School — STE Program")
 except Exception:
