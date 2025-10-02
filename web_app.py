@@ -557,6 +557,7 @@ def render_footer():
     
     **💡 Tips for best results:**
     - Use clear, well-lit images of lakatan bananas
+    - Make sure that the banana is in the white background
     - Ensure bananas are visible and not overlapping too much
     - Adjust sensitivity if detection is too strict/lenient
     - Typical lakatan banana weight is 100-150g for accurate sugar estimation
