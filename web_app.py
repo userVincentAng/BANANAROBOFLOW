@@ -186,17 +186,19 @@ def handle_image_upload():
 # Sugar Projection Display
 # -----------------------------
 def display_sugar_projection(sugar_projections, detections, weight_per_banana, has_peel):
-    """Display sugar content projection for the next 10 days"""
+    """Display sugar content projection for the next 10 days starting from current age"""
     if not sugar_projections or not detections:
         return
     
     with st.expander("📈 Sugar Content Projection (Next 10 Days)", expanded=True):
-        st.info("This projection shows how the sugar content will evolve over the next 10 days based on the scientific regression model.")
+        st.info("This projection shows how the sugar content will evolve over the next 10 days based on the current detected age and scientific regression model.")
         
         # Create projection data for all bananas
         projection_data = []
         for i, projection in enumerate(sugar_projections):
-            banana_name = f"Banana {i+1}"
+            current_age = detections[i]['analysis']['age_days']
+            banana_name = f"Banana {i+1} (Start: {current_age}d)"
+            
             for day_data in projection:
                 projection_data.append({
                     'Day': day_data['day'],
@@ -204,7 +206,8 @@ def display_sugar_projection(sugar_projections, detections, weight_per_banana, h
                     'Sugar Content (g)': day_data['sugar_content'],
                     'Sugar Percentage': day_data['sugar_percentage'],
                     'Banana': banana_name,
-                    'Is Current': day_data['is_current']
+                    'Is Current': day_data['is_current'],
+                    'Start Age': current_age
                 })
         
         if projection_data:
@@ -240,11 +243,11 @@ def display_sugar_projection(sugar_projections, detections, weight_per_banana, h
                 st.write("**Future Projections:**")
                 
                 # Allow user to select which banana to view
-                banana_options = [f"Banana {i+1}" for i in range(len(detections))]
+                banana_options = list(df_projection['Banana'].unique())
                 selected_banana = st.selectbox("Select banana to view detailed projection:", banana_options)
                 
                 # Display selected banana's projection
-                banana_projection = future_data[future_data['Banana'] == selected_banana]
+                banana_projection = df_projection[df_projection['Banana'] == selected_banana]
                 if not banana_projection.empty:
                     display_df = banana_projection[['Day', 'Age (days)', 'Sugar Percentage', 'Sugar Content (g)']].copy()
                     display_df['Sugar Percentage'] = display_df['Sugar Percentage'].round(1).astype(str) + '%'
@@ -252,16 +255,27 @@ def display_sugar_projection(sugar_projections, detections, weight_per_banana, h
                     display_df = display_df.sort_values('Day')
                     st.table(display_df)
                     
-                    # Show percentage increase
-                    current_sugar = current_day_data[current_day_data['Banana'] == selected_banana]['Sugar Content (g)'].iloc[0]
+                    # Show percentage increase from current to day 10
+                    current_sugar = banana_projection[banana_projection['Day'] == 0]['Sugar Content (g)'].iloc[0]
                     day10_sugar = banana_projection[banana_projection['Day'] == 10]['Sugar Content (g)'].iloc[0]
                     increase_pct = ((day10_sugar - current_sugar) / current_sugar) * 100
                     
-                    st.metric(
-                        f"Projected Sugar Increase for {selected_banana} (10 days)",
-                        f"{day10_sugar:.1f}g",
-                        f"+{increase_pct:.1f}%"
-                    )
+                    # Get start age for this banana
+                    start_age = banana_projection['Start Age'].iloc[0]
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.metric(
+                            f"Projected Sugar Increase (10 days)",
+                            f"{day10_sugar:.1f}g",
+                            f"+{increase_pct:.1f}%"
+                        )
+                    with col2:
+                        st.metric(
+                            "Age Progression",
+                            f"{start_age + 10:.1f} days",
+                            f"+10 days"
+                        )
 
 # -----------------------------
 # Results Display
@@ -626,6 +640,14 @@ def main():
                             sugar_content, formula_explanation, total_age, banana_count, sugar_breakdown, sugar_projections = calculate_sugar_content(
                                 results['detections'], weight_per_banana, formula_key, has_peel
                             )
+                            
+                            # Generate individual projections for each banana based on their detected age
+                            sugar_model = BananaSugarModel()
+                            sugar_projections = []
+                            for det in results['detections']:
+                                current_age = det['analysis']['age_days']
+                                projection = sugar_model.predict_sugar_projection(current_age, weight_per_banana, has_peel)
+                                sugar_projections.append(projection)
                         else:
                             sugar_content, formula_explanation, total_age, banana_count = calculate_sugar_content(
                                 results['detections'], weight_per_banana, formula_key, has_peel
