@@ -45,6 +45,7 @@ class BananaSugarModel:
         projection = []
         for days in range(days_ahead + 1):
             future_age = current_age_days + days
+            validated_age = self.validate_banana_age(future_age)
             sugar_percentage = self.predict_sugar_percentage(future_age)
             sugar_content = self.calculate_sugar_content(future_age, weight_grams, has_peel)
             
