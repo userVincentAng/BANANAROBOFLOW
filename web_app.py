@@ -214,13 +214,13 @@ def display_sugar_projection(sugar_projections, detections, weight_per_banana, h
             # Display line chart
             st.subheader("Sugar Content Projection")
             pivot_df = df_projection.pivot_table(
-                index='Day', 
+                index='Age (days)', 
                 columns='Banana', 
                 values='Sugar Content (g)',
                 aggfunc='mean'
             ).reset_index()
             
-            st.line_chart(pivot_df.set_index('Day'))
+            st.line_chart(pivot_df.set_index('Age (days)'))
             
             # Display detailed table
             st.subheader("Detailed Projection Data")
