@@ -216,6 +216,8 @@ def display_sugar_projection(sugar_projections, detections, weight_per_banana, h
             
             # Display line chart
             st.subheader("Sugar Content Projection")
+            
+            # Clean the data for charting - ensure no NaN values and proper data types
             pivot_df = df_projection.pivot_table(
                 index='Day', 
                 columns='Banana', 
@@ -223,7 +225,15 @@ def display_sugar_projection(sugar_projections, detections, weight_per_banana, h
                 aggfunc='mean'
             ).reset_index()
             
-            st.line_chart(pivot_df.set_index('Day'))
+            chart_df = pivot_df.copy()
+            chart_df = chart_df.fillna(0)  # Replace NaN with 0
+            chart_df = chart_df.set_index('Day')
+            
+            # Ensure all columns are numeric
+            for col in chart_df.columns:
+                chart_df[col] = pd.to_numeric(chart_df[col], errors='coerce').fillna(0)
+            
+            st.line_chart(chart_df)
             
             # Display detailed table
             st.subheader("Detailed Projection Data")
@@ -637,7 +647,7 @@ def main():
                         
                         # Calculate sugar content
                         if formula_key == "scientific":
-                            sugar_content, formula_explanation, total_age, banana_count, sugar_breakdown, sugar_projections = calculate_sugar_content(
+                            sugar_content, formula_explanation, total_age, banana_count, sugar_breakdown, _ = calculate_sugar_content(
                                 results['detections'], weight_per_banana, formula_key, has_peel
                             )
                             
