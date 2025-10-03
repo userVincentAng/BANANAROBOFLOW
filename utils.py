@@ -11,6 +11,9 @@ import streamlit as st
 # -----------------------------
 # Scientific Sugar Model
 # -----------------------------
+# -----------------------------
+# Scientific Sugar Model
+# -----------------------------
 class BananaSugarModel:
     def __init__(self):
         # Based on dataset regression: Sugar = 25.99 + 0.707 * Age
@@ -38,18 +41,17 @@ class BananaSugarModel:
         return sugar_content
     
     def predict_sugar_projection(self, current_age_days, weight_grams, has_peel=True, days_ahead=10):
-        """Predict sugar content for the next N days starting from current age"""
+        """Predict sugar content for the next N days"""
         projection = []
         for days in range(days_ahead + 1):
             future_age = current_age_days + days
             validated_age = self.validate_banana_age(future_age)
-            sugar_percentage = self.predict_sugar_percentage(validated_age)
-            sugar_content = self.calculate_sugar_content(validated_age, weight_grams, has_peel)
+            sugar_percentage = self.predict_sugar_percentage(future_age)
+            sugar_content = self.calculate_sugar_content(future_age, weight_grams, has_peel)
             
             projection.append({
                 'day': days,
                 'age_days': future_age,
-                'validated_age': validated_age,
                 'sugar_percentage': sugar_percentage,
                 'sugar_content': sugar_content,
                 'is_current': days == 0
@@ -186,12 +188,17 @@ def calculate_sugar_content(detections, total_weight, formula_type="scientific",
         sugar_model = BananaSugarModel()
         total_sugar = 0.0
         sugar_breakdown = []
+        sugar_projections = []
         
         for i, det in enumerate(detections):
             age_days = det['analysis']['age_days']
             sugar_percentage = sugar_model.predict_sugar_percentage(age_days)
             individual_sugar = sugar_model.calculate_sugar_content(age_days, total_weight, has_peel)
             total_sugar += individual_sugar
+            
+            # Generate sugar projection for this banana
+            projection = sugar_model.predict_sugar_projection(age_days, total_weight, has_peel)
+            sugar_projections.append(projection)
             
             sugar_breakdown.append({
                 'banana': i + 1,
@@ -205,8 +212,7 @@ def calculate_sugar_content(detections, total_weight, formula_type="scientific",
         formula_explanation = f"Sugar% = 25.99 + 0.707 × Age ({peel_info})"
         total_age = sum([det['analysis']['age_days'] for det in detections])
         
-        # Return empty list for sugar_projections to maintain function signature
-        return total_sugar, formula_explanation, total_age, banana_count, sugar_breakdown, []
+        return total_sugar, formula_explanation, total_age, banana_count, sugar_breakdown, sugar_projections
         
     else:
         total_age = sum([det['analysis']['age_days'] for det in detections])
