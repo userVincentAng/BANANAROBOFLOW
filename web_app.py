@@ -17,8 +17,8 @@ st.set_page_config(page_title="Lakatan Banana Ripeness & Sugar Content Detection
 # School Branding: PCWHS STE Program
 
 try:
-    logo_image2 = Image.open("pcwhs.png")
-    logo_image1 = Image.open("pcwh_logo.png")
+    logo_image1 = Image.open("pcwhs.png")
+    logo_image2 = Image.open("pcwh_logo.png")
     
     col1, col2 = st.columns(2)
     
