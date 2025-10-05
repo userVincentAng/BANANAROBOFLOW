@@ -22,7 +22,7 @@ try:
     with col_logo1:
         st.image(logo_image1, width=60)
     with col_text:
-        st.markdown("## Pasay City West High School")
+        st.markdown('<p style="font-size: 18px; font-weight: bold;">Pasay City West High School</p>', unsafe_allow_html=True)
 except Exception:
     st.warning("School logo not found: pcwh_logo.jpg")
 
@@ -32,7 +32,7 @@ try:
     with col_logo2:
         st.image(logo_image2, width=60)
     with col_text:
-        st.markdown("## Science Technology Engineering (STE) Program")
+        st.markdown('<p style="font-size: 18px; font-weight: bold;">Science Technology Engineering (STE) Program</p>', unsafe_allow_html=True)
 except Exception:
     st.warning("School logo not found: pcwhs.jpg")
 
