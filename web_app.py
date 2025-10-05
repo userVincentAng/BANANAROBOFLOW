@@ -18,26 +18,23 @@ st.set_page_config(page_title="Lakatan Banana Ripeness & Sugar Content Detection
 
 try:
     logo_image1 = Image.open("pcwhs.png")
-    logo_image2 = Image.open("pcwh_logo.png")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        col_logo1, col_text1 = st.columns([1, 3])
-        with col_logo1:
-            st.image(logo_image1, width=50)
-        with col_text1:
-            st.markdown("**Pasay City West High School**")
-    
-    with col2:
-        col_logo2, col_text2 = st.columns([1, 3])
-        with col_logo2:
-            st.image(logo_image2, width=50)
-        with col_text2:
-            st.markdown("**Science Technology Engineering (STE) Program**")
-            
+    col_logo1, col_text = st.columns([1, 9])
+    with col_logo1:
+        st.image(logo_image1, width=60)
+    with col_text:
+        st.markdown("## Pasay City West High School")
 except Exception:
     st.warning("School logo not found: pcwh_logo.jpg")
+
+try:
+    logo_image2 = Image.open("pcwh_logo.png")
+    col_logo2, col_text = st.columns([1, 9])
+    with col_logo2:
+        st.image(logo_image2, width=60)
+    with col_text:
+        st.markdown("## Science Technology Engineering (STE) Program")
+except Exception:
+    st.warning("School logo not found: pcwhs.jpg")
 
 st.title("🍌 Lakatan Banana Ripeness & Sugar Content Detection")
 
