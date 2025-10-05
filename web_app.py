@@ -195,12 +195,12 @@ def handle_image_upload():
 # Sugar Projection Display
 # -----------------------------
 def display_sugar_projection(sugar_projections, detections, weight_per_banana, has_peel):
-    """Display sugar content projection for the next 10 days"""
+    """Display sugar content projection up to day 10 maximum age"""
     if not sugar_projections or not detections:
         return
     
-    with st.expander("📈 Sugar Content Projection (Next 10 Days)", expanded=True):
-        st.info("This projection shows how the sugar content will evolve over the next 10 days based on the scientific regression model.")
+    with st.expander("📈 Sugar Content Projection (Up to Day 10)", expanded=True):
+        st.info("This projection shows how the sugar content will evolve up to a maximum age of 10 days based on the scientific regression model.")
         
         # Create projection data for all bananas
         projection_data = []
@@ -264,16 +264,18 @@ def display_sugar_projection(sugar_projections, detections, weight_per_banana, h
                     display_df['Projected Age (days)'] = display_df['Projected Age (days)'].astype(str)
                     st.dataframe(display_df, hide_index=True)
                     
-                    # Show percentage increase
+                    # Show percentage increase to maximum age (10 days)
                     current_sugar = current_day_data[current_day_data['Banana'] == selected_banana]['Sugar Content (g)'].iloc[0]
-                    day10_sugar = banana_projection[banana_projection['Day'] == 10]['Sugar Content (g)'].iloc[0]
-                    increase_pct = ((day10_sugar - current_sugar) / current_sugar) * 100
-                    
-                    st.metric(
-                        f"Projected Sugar Increase for {selected_banana} (10 days)",
-                        f"{day10_sugar:.1f}g",
-                        f"+{increase_pct:.1f}%"
-                    )
+                    max_age_data = banana_projection[banana_projection['Age (days)'] == banana_projection['Age (days)'].max()]
+                    if not max_age_data.empty:
+                        max_age_sugar = max_age_data['Sugar Content (g)'].iloc[0]
+                        increase_pct = ((max_age_sugar - current_sugar) / current_sugar) * 100
+                        
+                        st.metric(
+                            f"Projected Sugar Increase for {selected_banana} (up to day 10)",
+                            f"{max_age_sugar:.1f}g",
+                            f"+{increase_pct:.1f}%"
+                        )
 
 # -----------------------------
 # Results Display

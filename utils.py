@@ -40,14 +40,22 @@ class BananaSugarModel:
             
         return sugar_content
     
-    def predict_sugar_projection(self, current_age_days, weight_grams, has_peel=True, days_ahead=10):
-        """Predict sugar content for the next N days"""
+    def predict_sugar_projection(self, current_age_days, weight_grams, has_peel=True, max_age_days=10):
+        """Predict sugar content up to maximum age of 10 days"""
         projection = []
-        for days in range(days_ahead + 1):
+
+         # Calculate how many days we can project (up to max_age_days)
+        remaining_days = max(0, max_age_days - current_age_days)
+
+        for days in range(int(remaining_days) + 1):
             future_age = current_age_days + days
+            # Don't project beyond max_age_days
+            if future_age > max_age_days:
+                break
+                
             validated_age = self.validate_banana_age(future_age)
-            sugar_percentage = self.predict_sugar_percentage(future_age)
-            sugar_content = self.calculate_sugar_content(future_age, weight_grams, has_peel)
+            sugar_percentage = self.predict_sugar_percentage(validated_age)
+            sugar_content = self.calculate_sugar_content(validated_age, weight_grams, has_peel)
             
             projection.append({
                 'day': days,
@@ -197,7 +205,7 @@ def calculate_sugar_content(detections, total_weight, formula_type="scientific",
             total_sugar += individual_sugar
             
             # Generate sugar projection for this banana
-            projection = sugar_model.predict_sugar_projection(age_days, total_weight, has_peel)
+            projection = sugar_model.predict_sugar_projection(age_days, total_weight, has_peel, max_age_days=10)
             sugar_projections.append(projection)
             
             sugar_breakdown.append({
