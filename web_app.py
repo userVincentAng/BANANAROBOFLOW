@@ -15,18 +15,27 @@ from storage import BananaStorage
 # -----------------------------
 st.set_page_config(page_title="Lakatan Banana Ripeness & Sugar Content Detection", layout="wide")
 # School Branding: PCWHS STE Program
+
 try:
-    logo_image2 = Image.open("pcwhs.png")
-    logo_image1 = Image.open("pcwh_logo.png")
-    col_logo1, col_logo2, col_text = st.columns([1, 1, 8])
+    logo_image1 = Image.open("pcwhs.png")
+    col_logo1, col_text = st.columns([1, 9])
     with col_logo1:
-        st.image(logo_image2, width=60)
-    with col_logo2:
         st.image(logo_image1, width=60)
     with col_text:
-        st.markdown("## Pasay City West High School — STE Program")
+        st.markdown("## Pasay City West High School")
 except Exception:
     st.warning("School logo not found: pcwh_logo.jpg")
+
+try:
+    logo_image2 = Image.open("pcwh_logo.png")
+    col_logo2, col_text = st.columns([1, 9])
+    with col_logo2:
+        st.image(logo_image2, width=60)
+    with col_text:
+        st.markdown("## Science Technology Engineering (STE) Program")
+except Exception:
+    st.warning("School logo not found: pcwhs.jpg")
+
 st.title("🍌 Lakatan Banana Ripeness & Sugar Content Detection")
 
 # Initialize storage
@@ -232,7 +241,8 @@ def display_sugar_projection(sugar_projections, detections, weight_per_banana, h
                 current_display = current_day_data[['Banana', 'Age (days)', 'Sugar Percentage', 'Sugar Content (g)']].copy()
                 current_display['Sugar Percentage'] = current_display['Sugar Percentage'].round(1).astype(str) + '%'
                 current_display['Sugar Content (g)'] = current_display['Sugar Content (g)'].round(1)
-                st.table(current_display)
+                current_display['Age (days)'] = current_display['Age (days)'].astype(str)
+                st.dataframe(current_display, hide_index=True)
             
             # Show future projections
             future_data = df_projection[df_projection['Is Current'] == False]
@@ -246,11 +256,13 @@ def display_sugar_projection(sugar_projections, detections, weight_per_banana, h
                 # Display selected banana's projection
                 banana_projection = future_data[future_data['Banana'] == selected_banana]
                 if not banana_projection.empty:
-                    display_df = banana_projection[['Day', 'Age (days)', 'Sugar Percentage', 'Sugar Content (g)']].copy()
+                    display_df = banana_projection[['Age (days)', 'Sugar Percentage', 'Sugar Content (g)']].copy()
                     display_df['Sugar Percentage'] = display_df['Sugar Percentage'].round(1).astype(str) + '%'
                     display_df['Sugar Content (g)'] = display_df['Sugar Content (g)'].round(1)
-                    display_df = display_df.sort_values('Day')
-                    st.table(display_df)
+                    display_df = display_df.sort_values('Age (days)')
+                    display_df.rename(columns={'Age (days)': 'Projected Age (days)'}, inplace=True)
+                    display_df['Projected Age (days)'] = display_df['Projected Age (days)'].astype(str)
+                    st.dataframe(display_df, hide_index=True)
                     
                     # Show percentage increase
                     current_sugar = current_day_data[current_day_data['Banana'] == selected_banana]['Sugar Content (g)'].iloc[0]
