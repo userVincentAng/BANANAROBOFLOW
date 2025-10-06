@@ -43,26 +43,35 @@ class BananaSugarModel:
     def predict_sugar_projection(self, current_age_days, weight_grams, has_peel=True, max_age_days=10):
         """Predict sugar content up to maximum age of 10 days"""
         projection = []
-
-         # Calculate how many days we can project (up to max_age_days)
-        remaining_days = max(0, max_age_days - current_age_days)
-
-        for days in range(int(remaining_days) + 1):
-            future_age = current_age_days + days
-            # Don't project beyond max_age_days
-            if future_age > max_age_days:
+        
+        # Calculate how many full increments we can add while staying under max_age_days
+        increments = []
+        current_increment = current_age_days
+        
+        while current_increment < max_age_days:
+            increments.append(current_increment)
+            current_increment += 1.0
+            # Stop if next increment would exceed max_age_days
+            if current_increment > max_age_days:
                 break
-                
-            validated_age = self.validate_banana_age(future_age)
+        
+        # Always include the exact max_age_days (10.0) as the final point
+        if max_age_days not in increments:
+            increments.append(max_age_days)
+        
+        for age in increments:
+            days_from_current = age - current_age_days
+            
+            validated_age = self.validate_banana_age(age)
             sugar_percentage = self.predict_sugar_percentage(validated_age)
             sugar_content = self.calculate_sugar_content(validated_age, weight_grams, has_peel)
             
             projection.append({
-                'day': days,
-                'age_days': future_age,
+                'day': round(days_from_current, 1),
+                'age_days': age,
                 'sugar_percentage': sugar_percentage,
                 'sugar_content': sugar_content,
-                'is_current': days == 0
+                'is_current': abs(age - current_age_days) < 0.01  # Handle floating point precision
             })
         
         return projection

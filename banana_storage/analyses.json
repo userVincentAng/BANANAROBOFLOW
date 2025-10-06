@@ -1,48 +1,5 @@
 {
-  "analyses": [
-    {
-      "timestamp": "2025-10-05T17:12:12.778896",
-      "image_filename": "banana_analysis_20251005_171212.jpg",
-      "banana_count": 1,
-      "total_sugar_grams": 22.88850994285715,
-      "sugar_formula": "Scientific: Regression Model (R\u00b2=0.87)",
-      "weight_per_banana": 120.0,
-      "detections": [
-        {
-          "banana_index": 1,
-          "age_days": 5.8,
-          "sugar_percentage": 30.09428571428572,
-          "sugar_grams": 22.88850994285715,
-          "ripeness_score": 5.0,
-          "green_percent": 0.0,
-          "yellow_percent": 60.12034194437697,
-          "brown_percent": 57.671359963475986,
-          "spot_count": 2403
-        }
-      ]
-    },
-    {
-      "timestamp": "2025-10-05T17:13:03.024633",
-      "image_filename": "banana_analysis_20251005_171303.jpg",
-      "banana_count": 1,
-      "total_sugar_grams": 22.88850994285715,
-      "sugar_formula": "Scientific: Regression Model (R\u00b2=0.87)",
-      "weight_per_banana": 120.0,
-      "detections": [
-        {
-          "banana_index": 1,
-          "age_days": 5.8,
-          "sugar_percentage": 30.09428571428572,
-          "sugar_grams": 22.88850994285715,
-          "ripeness_score": 5.0,
-          "green_percent": 0.0,
-          "yellow_percent": 60.12034194437697,
-          "brown_percent": 57.671359963475986,
-          "spot_count": 2403
-        }
-      ]
-    }
-  ],
+  "analyses": [],
   "metadata": {
     "max_records": 10
   }
