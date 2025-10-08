@@ -13,7 +13,7 @@ from storage import BananaStorage
 # -----------------------------
 # Streamlit UI Configuration
 # -----------------------------
-st.set_page_config(page_title="Lakatan Banana Ripeness & Sugar Content Detection", layout="wide")
+st.set_page_config(page_title="Lakatan Banana Yield Scanner (BaY-Sc)", layout="wide")
 # School Branding: PCWHS STE Program
 
 try:
