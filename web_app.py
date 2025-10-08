@@ -36,7 +36,7 @@ try:
 except Exception:
     st.warning("School logo not found: pcwhs.jpg")
 
-st.title("🍌 Lakatan Banana Ripeness & Sugar Content Detection")
+st.title("🍌 Lakatan Banana Yield Scanner (BaY-Sc)")
 
 # Initialize storage
 @st.cache_resource
