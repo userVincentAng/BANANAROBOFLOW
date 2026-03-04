@@ -1,1 +1,5 @@
 libgl1
+libglx0
+libglvnd0
+libopengl0
+libgl1-mesa-dri
